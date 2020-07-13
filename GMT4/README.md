@@ -1,7 +1,3 @@
-ex01: global  
-ex02: world map  
-ex03: frames  
-ex04: seismicity
 ![](https://github.com/Jordon-Chen/GMT/blob/master/GMT4/ex01.png?raw=true)  
 ex01: global  
 ![](https://github.com/Jordon-Chen/GMT/blob/master/GMT4/ex02.png?raw=true)  
