@@ -78,7 +78,7 @@ rm -f $output
 rm -f $jpg
 
 psbasemap -JX5il/6.472il -R1/500/1/10000 -Ba1pf3g3:"Hypocentral Distance (km)":/a1pf3g3:"PGA (gal)":WSne -P -K -V -X5 > $output
-awk '{print $8,$7,$9}' $eventPgaInfo | psxy -J -R -B -St0.05 -W1/black -Gblack -K -O -V >> $output
+awk '{print $7,$9}' $eventPgaInfo | psxy -J -R -B -St0.05 -W1/black -Gblack -K -O -V >> $output
 
 pstext -J -R -G0/0/0 -N -K -O -V << ! >> $output
 7 2 12 0 4 6 Origin Time: $ymd $hms (UTC)
