@@ -1,0 +1,97 @@
+#!/bin/csh
+# UPDATE: 2020/09/03, ctc
+#
+# Goals:
+# 1. draw Hypercentral Distance v.s. PGA
+# 
+# Given:
+# 1. a sample graph Attenuation Relationships of Peak Ground Acceleration and Velocity for Crustal Earthquakes in Taiwan (Liu & Tsai, 2005) Fig.8
+# 2. TSMIP_PGAs_event.txt
+# 
+# Constraints:
+# 
+# Developed:
+#
+# Under developement:
+# 1. draw Hypercentral Distance v.s. PGA
+# 
+# Notes:
+#
+# Debug:
+#
+# Assumption: 
+# 
+
+# =====Input arguments===== #
+if($#argv != 1) then
+  echo
+  echo "plotHypocentralDist2PGA.gmt [eventDir]"
+  echo "-EX: plotHypocentralDist2PGA.gmt 20190807212803"
+  echo "-It will draw HypocentralDist to PGA graph."
+  echo
+  exit 1
+endif
+
+# ====Preparation===== #
+set fileDir = $1
+set eventPgaInfo = `ls $fileDir/TSMIP_PGAs_$1.txt`
+set fileName = `ls $fileDir/TSMIP_PGAs_$1.txt | awk -F'/' '{print $NF}'`
+echo $eventPgaInfo
+echo $fileName
+set event = `echo $fileName | awk -F'_' '{print $3}' | awk -F'.' '{print $1}'`
+
+# find event from catalog.dat
+set catalog = 'catalog.dat'
+set yr = `echo $event | cut -c 1-4`
+set mm = `echo $event | cut -c 5-6`
+set day = `echo $event | cut -c 7-8`
+set hr = `echo $event | cut -c 9-10`
+set min = `echo $event | cut -c 11-12`
+set sec = `echo $event | cut -c 13-14`
+set ymd = $yr-$mm-$day
+set hms = $hr':'$min':'$sec
+echo $event $ymd $hms
+
+set ymdCatalog = `awk '{print $1}' $catalog`
+set hmsCatalog = `awk '{print $2}' $catalog`
+set lat = `awk '{print $3}' $catalog`
+set lon = `awk '{print $4}' $catalog`
+set dep = `awk '{print $5}' $catalog`
+set ML = `awk '{print $6}' $catalog`
+set i = 1
+foreach line ( $ymdCatalog )
+  set hmsStripedMS = `echo $hmsCatalog[$i] | cut -c 1-8`
+  if ( $ymd == $ymdCatalog[$i] &&  $hms == $hmsStripedMS) then
+    set evla = $lat[$i]
+    set evlo = $lon[$i]
+    set evdp = $dep[$i]
+    set mag = $ML[$i]
+#    echo $line $evla $evlo $evdp $mag
+  endif
+  @ i = $i + 1
+end
+
+# =====Draw===== #
+set output = plot/HypocentralDist_PGA_$event'.ps'
+set jpg = plot/HypocentralDist_PGA_$event'.jpg'
+rm -f $output
+rm -f $jpg
+
+psbasemap -JX5il/6.472il -R1/500/1/10000 -Ba1pf3g3:"Hypocentral Distance (km)":/a1pf3g3:"PGA (gal)":WSne -P -K -V -X5 > $output
+awk '{print $8,$7,$9}' $eventPgaInfo | psxy -J -R -B -St0.05 -W1/black -Gblack -K -O -V >> $output
+
+pstext -J -R -G0/0/0 -N -K -O -V << ! >> $output
+7 2 12 0 4 6 Origin Time: $ymd $hms (UTC)
+!
+pstext -J -R -G0/0/0 -N -K -O -V << ! >> $output
+12.5 1.5 12 0 4 6 Lat: $evla  Lon: $evlo  Mag: $mag  Depth: $evdp km
+!
+
+
+# Convert ps to jpg
+echo 'converting ps to jpg'
+convert -density 150 -trim $output $jpg
+echo '--> done'
+
+eog $jpg
+#gv $output

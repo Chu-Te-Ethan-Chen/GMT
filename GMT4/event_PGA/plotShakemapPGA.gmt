@@ -1,0 +1,110 @@
+#!/bin/csh
+# UPDATE: 2020/09/02, ctc
+#
+# Goals:
+# 1. draw shakemap PGA
+# 
+# Given:
+# 1. 20190807212803_Max_PGA.xyz
+#
+# Constraints: none
+#
+# Developed: none
+# 
+# Under developement: none
+#
+# Notes: none
+# 
+# Debug: none
+
+# =====Input arguments===== #
+if($#argv != 1) then
+  echo
+  echo "plotShakemapPGA.gmt [eventDir]"
+  echo "-EX: plotShakemapPGA.gmt 20190807212803"
+  echo "-It will draw shakemap in PGA scale on the 20190807212803 event."
+  echo
+  exit 1
+endif
+
+# ====Preparation===== #
+set fileDir = $1
+set eventPgaInfo = `ls $fileDir/TSMIP_PGAs_$1.txt`
+set fileName = `ls $fileDir/TSMIP_PGAs_$1.txt | awk -F'/' '{print $NF}'`
+echo $eventPgaInfo
+echo $fileName
+set event = `echo $fileName | awk -F'_' '{print $3}' | awk -F'.' '{print $1}'`
+
+# find event from catalog.dat
+set catalog = 'catalog.dat'
+set yr = `echo $event | cut -c 1-4`
+set mm = `echo $event | cut -c 5-6`
+set day = `echo $event | cut -c 7-8`
+set hr = `echo $event | cut -c 9-10`
+set min = `echo $event | cut -c 11-12`
+set sec = `echo $event | cut -c 13-14`
+set ymd = $yr-$mm-$day
+set hms = $hr':'$min':'$sec
+echo $event $ymd $hms
+
+set ymdCatalog = `awk '{print $1}' $catalog`
+set hmsCatalog = `awk '{print $2}' $catalog`
+set lat = `awk '{print $3}' $catalog`
+set lon = `awk '{print $4}' $catalog`
+set dep = `awk '{print $5}' $catalog`
+set ML = `awk '{print $6}' $catalog`
+set i = 1
+foreach line ( $ymdCatalog )
+  set hmsStripedMS = `echo $hmsCatalog[$i] | cut -c 1-8`
+  if ( $ymd == $ymdCatalog[$i] &&  $hms == $hmsStripedMS) then
+    set evla = $lat[$i]
+    set evlo = $lon[$i]
+    set evdp = $dep[$i]
+    set mag = $ML[$i]
+#    echo $line $evla $evlo $evdp $mag
+  endif
+  @ i = $i + 1
+end
+
+# =====Draw===== #
+set output = plot/shakemap_PGA_$event'.ps'
+set jpg = plot/shakemap_PGA_$event'.jpg'
+set TaiwanGrd = /home/dmc/topo/Taiwan/twn_topo.grd
+set int = /home/dmc/topo/Taiwan/twn_topo.int
+set TaiwanCpt = /home/dmc/topo/topo4.cpt
+set begloLegend = 122.1
+set endloLegend = 123
+set beglaLegend = 21
+set endlaLegend = 22.8
+set cpt = PGA.cpt
+rm -f $output
+rm -f $jpg
+
+psbasemap -JM6i -R119/123/21/26 -Ba1f1WSne -P -K -V > $output
+grdimage $TaiwanGrd -J -R -B -C$TaiwanCpt -I$int -K -O -V >> $output
+
+pscoast -J -R -B -W3 -Dh -Lf119.5/21.2/2/80+lkm -K -O -V >> $output
+awk '{print $3,$2,$9}' $eventPgaInfo | psxy -J -R -B -Sc0.2 -W1/black -C$cpt -K -O -V >> $output
+
+# event epicenter
+psxy -J -R -Sa0.8 -G0/0/255 -K -O -V << ! >> $output
+$evlo $evla
+!
+pstext -J -R -G0/0/0 -N -K -O -V << ! >> $output
+121.26 25.8 12 0 4 6 Origin Time: $ymd $hms (UTC)
+!
+pstext -J -R -G0/0/0 -N -K -O -V << ! >> $output
+121.6 25.7 12 0 4 6 Lat: $evla  Lon: $evlo  Mag: $mag  Depth: $evdp km
+!
+
+# color bar
+psscale -C$cpt -D12.2/3.5/6/0.25 -B/:"PGA (gal)": -L -S -O >> $output
+#psscale -C$cpt -D8.5/1.1/8/0.25h -B/:"PGA (gal)": -L -S -O >> $output
+
+# Convert ps to jpg
+echo 'converting ps to jpg'
+convert -density 150 -trim $output $jpg
+echo '--> done'
+
+eog $jpg
+#gv $output
